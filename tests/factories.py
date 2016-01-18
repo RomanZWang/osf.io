@@ -248,7 +248,7 @@ class RegistrationFactory(AbstractNodeFactory):
             else:
                 reg.require_approval(reg.creator)
             reg.save()
-            reg.sanction.add_authorizer(reg.creator)
+            reg.sanction.add_authorizer(reg.creator, reg)
             reg.sanction.save()
 
         if archive:
