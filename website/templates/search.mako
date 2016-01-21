@@ -211,6 +211,11 @@
                             <i class="fa social-icons" data-toggle="tooltip" title="ResearcherID">R</i>
                         </a>
                     </li>
+                    <li data-bind="visible: social.researchGate">
+                        <a data-bind="attr.href: social.researchGate">
+                            <img class="social-icons" src="/static/img/researchgate.jpg" style="PADDING-BOTTOM: 7px" data-toggle="tooltip" title="ResearchGate"></i>
+                        </a>
+                    </li>
                 </ul>
                 <!-- /ko -->
             </div>
