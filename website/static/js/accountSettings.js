@@ -229,7 +229,8 @@ var UserProfileViewModel = oop.extend(ChangeMessageMixin, {
                     self.client.update(self.profile(), email).done(function () {
                         $osf.growl(
                             'Email confirmation resent to <em>' + addrText + '</em>',
-                            'You will receive a new confirmation email at <em>' + addrText  + '</em>. Please check your email and confirm.',
+                            'You will receive a new confirmation email at <em>' + addrText  + '</em>.' +
+                            ' Please log out of this account and check your email to confirm this action.',
                             'success');
                     });
                 }
