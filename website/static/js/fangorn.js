@@ -91,10 +91,13 @@ function findByTempID(parent, tmpID) {
 function cancelUploads (row) {
     var tb = this;
     var uploading = tb.dropzone.getUploadingFiles();
-    var filesArr = uploading.concat(tb.dropzone.getQueuedFiles());
+    var rejected = tb.dropzone.getRejectedFiles();
+    var queued = tb.dropzone.getQueuedFiles();
+    var filesArr = uploading.concat(queued, rejected);
+
     for (var i = 0; i < filesArr.length; i++) {
         var j = filesArr[i];
-        if(!row){
+        if(!row) {
             var parent = j.treebeardParent || tb.dropzoneItemCache;
             var item = findByTempID(parent, j.tmpID);
             tb.dropzone.removeFile(j);
@@ -120,36 +123,41 @@ var uploadRowTemplate = function(item){
     var columns = [{
         data : '',  // Data field name
         css : '',
-        custom : function(){ return m('row.text-muted', [
-            m('.col-xs-7', {style: 'overflow: hidden;text-overflow: ellipsis;'}, [
-                m('span', { style : 'padding-left:' + padding + 'px;'}, tb.options.resolveIcon.call(tb, item)),
-                m('span',{ style : 'margin-left: 9px;'}, item.data.name)
-            ]),
-            m('.col-xs-3',
-                m('.progress', [
-                    m('.progress-bar.progress-bar-info.progress-bar-striped.active', {
-                        role : 'progressbar',
-                        'aria-valuenow' : item.data.progress,
-                        'aria-valuemin' : '0',
-                        'aria-valuemax': '100',
-                        'style':'width: ' + item.data.progress + '%' }, m('span.sr-only', item.data.progress + '% Complete'))
-                ])
-            ),
-            m('.col-xs-2', [
-                m('span', m('.fangorn-toolbar-icon.m-l-sm', {
-                        style : 'padding: 0px 6px 2px 2px;font-size: 16px;display: inline;',
-                        config : function() {
-                            reapplyTooltips();
-                        },
-                        'onclick' : function (e) {
-                            e.stopImmediatePropagation();
-                            cancelUploads.call(tb, item);
-                        }},
-                     m('span.text-muted','×')
-                )),
-            ]),
-
-        ]); }
+        custom : function(){
+            var uploadColumns = [
+                m('.col-xs-7', {style: 'overflow: hidden;text-overflow: ellipsis;'}, [
+                    m('span', { style : 'padding-left:' + padding + 'px;'}, tb.options.resolveIcon.call(tb, item)),
+                    m('span',{ style : 'margin-left: 9px;'}, item.data.name)
+                ]),
+                m('.col-xs-3',
+                    m('.progress', [
+                        m('.progress-bar.progress-bar-info.progress-bar-striped.active', {
+                            role : 'progressbar',
+                            'aria-valuenow' : item.data.progress,
+                            'aria-valuemin' : '0',
+                            'aria-valuemax': '100',
+                            'style':'width: ' + item.data.progress + '%' }, m('span.sr-only', item.data.progress + '% Complete'))
+                    ])
+                )
+            ];
+            if (item.data.progress < 100) {
+                uploadColumns.push(m('.col-xs-2', [
+                    m('span', m('.fangorn-toolbar-icon.m-l-sm', {
+                            style : 'padding: 0px 6px 2px 2px;font-size: 16px;display: inline;',
+                            config : function() {
+                                reapplyTooltips();
+                            },
+                            'onclick' : function (e) {
+                                console.log(item.data.progress);
+                                e.stopImmediatePropagation();
+                                cancelUploads.call(tb, item);
+                            }},
+                         m('span.text-muted','×')
+                    ))
+                ]));
+            }
+            return m('row.text-muted', uploadColumns);
+        }
     }];
     if(tb.options.placement === 'files'){
         columns.push({
@@ -505,12 +513,14 @@ function doItemOp(operation, to, from, rename, conflict) {
         $osf.growl(operation.verb + ' failed.', message);
 
         Raven.captureMessage('Failed to move or copy file', {
-            xhr: xhr,
-            requestData: {
-                rename: rename,
-                conflict: conflict,
-                source: waterbutler.toJsonBlob(from),
-                destination: waterbutler.toJsonBlob(to),
+            extra: {
+                xhr: xhr,
+                requestData: {
+                    rename: rename,
+                    conflict: conflict,
+                    source: waterbutler.toJsonBlob(from),
+                    destination: waterbutler.toJsonBlob(to),
+                }
             }
         });
 
@@ -1690,10 +1700,10 @@ var FGToolbar = {
                 icon : 'fa fa-times'
             }, '');
         templates[toolbarModes.FILTER] =  [
-            m('.col-xs-10', [
+            m('.col-xs-9', [
                 ctrl.tb.options.filterTemplate.call(ctrl.tb)
                 ]),
-                m('.col-xs-2.tb-buttons-col',
+                m('.col-xs-3.tb-buttons-col',
                     m('.fangorn-toolbar.pull-right', [dismissIcon])
                 )
             ];
@@ -2380,7 +2390,7 @@ tbOptions = {
         var item = tb.find(row.id);
         _fangornMultiselect.call(tb,null,item);
     },
-    hScroll : 400,
+    hScroll : null,
     naturalScrollLimit : 0
 };
 

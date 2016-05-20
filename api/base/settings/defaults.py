@@ -27,6 +27,7 @@ AUTHENTICATION_BACKENDS = (
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = osf_settings.DEBUG_MODE
+DEBUG_PROPAGATE_EXCEPTIONS = True
 
 ALLOWED_HOSTS = [
     '.osf.io'
@@ -49,7 +50,9 @@ INSTALLED_APPS = (
 
 # TODO: Are there more granular ways to configure reporting specifically related to the API?
 RAVEN_CONFIG = {
-    'dsn': osf_settings.SENTRY_DSN
+    'tags': {'App': 'api'},
+    'dsn': osf_settings.SENTRY_DSN,
+    'release': osf_settings.VERSION,
 }
 
 BULK_SETTINGS = {
@@ -96,6 +99,8 @@ CORS_ORIGIN_WHITELIST = (urlparse(osf_settings.DOMAIN).netloc,
                          osf_settings.DOMAIN,
                          )
 CORS_ALLOW_CREDENTIALS = True
+# Set dynamically on app init
+INSTITUTION_ORIGINS_WHITELIST = ()
 
 MIDDLEWARE_CLASSES = (
     # TokuMX transaction support
@@ -103,10 +108,17 @@ MIDDLEWARE_CLASSES = (
     # even in the event of a redirect. CommonMiddleware may cause other middlewares'
     # process_request to be skipped, e.g. when a trailing slash is omitted
     'api.base.middleware.DjangoGlobalMiddleware',
-    'api.base.middleware.TokuTransactionsMiddleware',
+    'api.base.middleware.MongoConnectionMiddleware',
+    'api.base.middleware.CeleryTaskMiddleware',
+    'api.base.middleware.TokuTransactionMiddleware',
+    'api.base.middleware.PostcommitTaskMiddleware',
+
+    # A profiling middleware. ONLY FOR DEV USE
+    # Uncomment and add "prof" to url params to recieve a profile for that url
+    # 'api.base.middleware.ProfileMiddleware',
 
     # 'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
+    'api.base.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     # 'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -161,15 +173,22 @@ SWAGGER_SETTINGS = {
         'description':
         """
         Welcome to the fine documentation for the Open Science Framework's API!  Please click
-        on the <strong>GET /v2/</strong> link below to get started.""",
+        on the <strong>GET /v2/</strong> link below to get started.
+
+        For the most recent docs, please check out our <a href="/v2/">Browsable API</a>.
+        """,
         'title': 'OSF APIv2 Documentation',
     },
     'doc_expansion': 'list',
+    "exclude_namespaces": ['applications', 'tokens'],
 }
 
 DEBUG_TRANSACTIONS = DEBUG
 
-ENABLE_VARNISH = False
-ENABLE_ESI = False
-VARNISH_SERVERS = []  # This should be set in local.py or cache invalidation won't work
-ESI_MEDIA_TYPES = {'application/vnd.api+json', 'application/json'}
+JWT_SECRET = 'osf_api_cas_login_jwt_secret_32b'
+JWE_SECRET = 'osf_api_cas_login_jwe_secret_32b'
+
+ENABLE_VARNISH = osf_settings.ENABLE_VARNISH
+ENABLE_ESI = osf_settings.ENABLE_ESI
+VARNISH_SERVERS = osf_settings.VARNISH_SERVERS
+ESI_MEDIA_TYPES = osf_settings.ESI_MEDIA_TYPES

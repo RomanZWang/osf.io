@@ -8,7 +8,6 @@ from tests.factories import (
     ProjectFactory,
     RegistrationFactory,
     AuthUserFactory,
-    RetractedRegistrationFactory
 )
 
 
@@ -82,47 +81,20 @@ class TestRegistrationDetail(ApiTestCase):
         assert_equal(res.status_code, 404)
         assert_equal(res.json['errors'][0]['detail'], "Not found.")
 
-    def test_retractions_display_limited_fields(self):
-        registration = RegistrationFactory(creator=self.user, project=self.public_project, public=True)
-        url = '/{}registrations/{}/'.format(API_BASE, registration._id)
-        retraction = RetractedRegistrationFactory(registration=registration, user=registration.creator)
-        retraction.justification = 'We made a major error.'
-        retraction.save()
+    def test_registration_shows_specific_related_counts(self):
+        url = '/{}registrations/{}/?related_counts=children'.format(API_BASE, self.private_registration._id)
         res = self.app.get(url, auth=self.user.auth)
         assert_equal(res.status_code, 200)
+        assert_equal(res.json['data']['relationships']['children']['links']['related']['meta']['count'], 0)
+        assert_equal(res.json['data']['relationships']['contributors']['links']['related']['meta'], {})
 
-        assert_items_equal(res.json['data']['attributes'], {
-            'title': registration.title,
-            'description': registration.description,
-            'date_created': registration.date_created,
-            'date_registered': registration.registered_date,
-            'retraction_justification': registration.retraction.justification,
-            'public': None,
-            'category': None,
-            'date_modified': None,
-            "registration": True,
-            'fork': None,
-            'collection': None,
-            'dashboard': None,
-            'tags': None,
-            'retracted': True,
-            'pending_retraction': None,
-            'pending_registration_approval': None,
-            'pending_embargo_approval': None,
-            "embargo_end_date": None,
-            "registered_meta": None,
-            'current_user_permissions': None,
-            "registration_supplement": registration.registered_meta.keys()[0]
-        })
+    def test_hide_if_registration(self):
+        # Registrations are a HideIfRegistration field
+        node_url = '/{}nodes/{}/'.format(API_BASE, self.private_project._id)
+        res = self.app.get(node_url, auth=self.user.auth)
+        assert_equal(res.status_code, 200)
+        assert_in('registrations', res.json['data']['relationships'])
 
-        contributors = urlparse(res.json['data']['relationships']['contributors']['links']['related']['href']).path
-        assert_equal(contributors, '/{}registrations/{}/contributors/'.format(API_BASE, registration._id))
-
-        assert_not_in('children', res.json['data']['relationships'])
-        assert_not_in('comments', res.json['data']['relationships'])
-        assert_not_in('node_links', res.json['data']['relationships'])
+        res = self.app.get(self.private_url, auth=self.user.auth)
+        assert_equal(res.status_code, 200)
         assert_not_in('registrations', res.json['data']['relationships'])
-        assert_not_in('parent', res.json['data']['relationships'])
-        assert_not_in('forked_from', res.json['data']['relationships'])
-        assert_not_in('files', res.json['data']['relationships'])
-        assert_not_in('logs', res.json['data']['relationships'])
